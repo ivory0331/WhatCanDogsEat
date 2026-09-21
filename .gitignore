@@ -1,0 +1,11 @@
+# IntelliJ 설정 파일
+.idea/
+
+# Python 백엔드 무시 파일
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# React 프론트엔드 무시 파일
+frontend/node_modules/
+frontend/dist/

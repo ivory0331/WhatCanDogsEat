@@ -1,9 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import models
+from database import engine
+
+# FastAPI 서버가 실행될 때, models.py에 정의된 테이블들을 DB 파일에 생성합니다.
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# React(포트 5173)에서 오는 요청을 허용하기 위한 CORS 설정
+# (아래 CORS 설정과 기존 코드들은 그대로 유지합니다)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -12,17 +17,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 기본 경로(/)로 접속했을 때 보여줄 테스트 데이터
 @app.get("/")
 def read_root():
     return {"message": "What Can Dogs Eat 백엔드 서버가 정상 작동 중입니다! 🐶"}
 
-# 강아지가 먹어도 되는지 확인하는 임시 검색 API (1단계 목적)
 @app.get("/api/search")
 def search_food(food_name: str):
-    # 나중에 여기에 DB 조회나 AI 연동 로직이 들어갑니다.
     return {
         "food": food_name,
-        "is_safe": True, # 임시 데이터
+        "is_safe": True,
         "description": f"{food_name}은(는) 강아지가 먹어도 괜찮습니다."
     }

@@ -9,3 +9,4 @@ backend/__pycache__/
 # React 프론트엔드 무시 파일
 frontend/node_modules/
 frontend/dist/
+frontend/.vite/

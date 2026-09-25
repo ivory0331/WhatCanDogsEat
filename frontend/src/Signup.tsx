@@ -19,11 +19,31 @@ export default function Signup() {
         setDogInfo(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        saveDogInfo(dogInfo); // Zustand 전역 상태에 정보 저장!
-        alert(`${dogInfo.name}의 정보가 기기 메모리에 저장되었습니다.`);
-        navigate('/'); // 홈 화면(검색창)으로 이동
+
+        try {
+            // 1. 파이썬 백엔드로 데이터 전송 (POST 요청)
+            const response = await fetch('http://localhost:8000/api/dogs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dogInfo),
+            });
+
+            if (!response.ok) throw new Error("서버 저장 실패");
+
+            // 2. Zustand 전역 상태에도 정보 저장 (홈 화면에서 바로 보여주기 위함)
+            saveDogInfo(dogInfo);
+
+            alert(`${dogInfo.name}의 정보가 DB에 성공적으로 저장되었습니다!`);
+            navigate('/'); // 홈 화면으로 이동
+
+        } catch (error) {
+            console.error("에러 발생:", error);
+            alert("정보 저장 중 오류가 발생했습니다.");
+        }
     };
 
     return (

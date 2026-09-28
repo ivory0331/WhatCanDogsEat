@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDogStore } from './store'; // 방금 만든 저장소 불러오기
+import { useDogStore, useAuthStore } from './store'; // 방금 만든 저장소 불러오기
 
 export default function Signup() {
     const navigate = useNavigate(); // 화면 이동 함수 (Vue Router의 router.push 역할)
     const saveDogInfo = useDogStore((state) => state.saveDogInfo); // 저장 함수 꺼내오기
+    const token = useAuthStore((state) => state.token); // Zustand에서 토큰 꺼내기
 
     const [dogInfo, setDogInfo] = useState({
         name: '',
@@ -22,12 +23,20 @@ export default function Signup() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // 로그인이 안 되어있으면 튕겨내기
+        if (!token) {
+            alert("로그인이 필요한 서비스입니다.");
+            navigate('/auth');
+            return;
+        }
+
         try {
             // 1. 파이썬 백엔드로 데이터 전송 (POST 요청)
             const response = await fetch('http://localhost:8000/api/dogs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // 서버에 출입증(토큰) 제시하기
                 },
                 body: JSON.stringify(dogInfo),
             });

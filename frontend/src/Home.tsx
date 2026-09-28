@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDogStore } from './store'; // 저장소 불러오기
+import { useDogStore, useAuthStore } from './store'; // 저장소 불러오기
 
 interface SearchResult {
     food: string;
@@ -14,6 +14,7 @@ export default function Home() {
 
     // Zustand에서 현재 저장된 강아지 정보 꺼내기
     const dogInfo = useDogStore((state) => state.dogInfo);
+    const token = useAuthStore((state) => state.token);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,7 +22,16 @@ export default function Home() {
 
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8000/api/search?food_name=${keyword}`);
+            // 토큰이 있으면 헤더에 담고, 없으면 안 담습니다.
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`http://localhost:8000/api/search?food_name=${keyword}`, {
+                headers
+            });
+
             const data = await response.json();
             setResult(data);
         } catch (error) {

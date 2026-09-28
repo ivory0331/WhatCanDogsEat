@@ -9,6 +9,18 @@ import models
 import schemas
 from database import engine, SessionLocal
 
+import os
+import json
+from dotenv import load_dotenv
+import google.generativeai as genai
+from fastapi import Header
+from typing import Optional
+
+# 환경변수(.env) 로드 및 제미나이 설정
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-3.8-flash')
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -84,14 +96,66 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token = jwt.encode({"sub": user.username}, SECRET_KEY, algorithm=ALGORITHM)
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- 기존 API들 (임시) ---
 @app.get("/")
 def read_root():
     return {"message": "백엔드 정상 작동 중!"}
 
 @app.get("/api/search")
-def search_food(food_name: str):
-    return {"food": food_name, "is_safe": True, "description": f"{food_name}은(는) 안전합니다."}
+def search_food(
+        food_name: str,
+        authorization: Optional[str] = Header(None), # 프론트에서 보낸 토큰(선택사항)
+        db: Session = Depends(get_db)
+):
+    # 1. 로그인한 유저인지 확인하고, 맞춤 강아지 정보(알러지, 질환 등)를 문장으로 만듭니다.
+    dog_context = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            user = db.query(models.User).filter(models.User.username == username).first()
+            if user and user.dogs:
+                dog = user.dogs[0]
+                dog_context = f"""
+                [주의사항] 질문하는 사용자의 강아지 정보는 다음과 같습니다. 이 정보를 반드시 바탕으로 대답해주세요:
+                - 이름: {dog.name}
+                - 나이: {dog.age}살
+                - 견종: {dog.breed}
+                - 알러지: {dog.allergies or '없음'}
+                - 기저질환: {dog.health_issues or '없음'}
+                """
+        except:
+            pass # 로그인이 안 되어있으면 그냥 일반 강아지 기준으로 검색 진행
+
+    # 2. 제미나이에게 명령할 프롬프트 작성
+    prompt = f"""
+    당신은 수의학 및 강아지 영양학 전문가입니다.
+    사용자가 검색한 음식: '{food_name}'
+    
+    {dog_context}
+    
+    위 음식을 강아지가 먹어도 되는지 판단하고, 반드시 아래의 JSON 형식으로만 정확하게 답변해주세요. (마크다운 기호나 다른 설명은 절대 추가하지 마세요)
+    {{
+        "food": "{food_name}",
+        "is_safe": true 또는 false,
+        "description": "강아지가 먹어도 되는지 여부와 그 이유, 주의할 점을 3~4문장으로 친절하게 설명해주세요. 만약 사용자의 강아지 정보(알러지, 기저질환)가 주어졌다면 그 이름과 상태에 맞춰서 맞춤형으로 설명해주세요."
+    }}
+    """
+
+    # 3. 제미나이 호출 및 프론트엔드로 결과 전달
+    try:
+        response = model.generate_content(prompt)
+        # 제미나이가 준 텍스트에서 불필요한 마크다운(```json 등)을 제거하고 딕셔너리로 변환
+        clean_text = response.text.strip().replace('```json', '').replace('```', '')
+        result = json.loads(clean_text)
+        return result
+    except Exception as e:
+        print("Gemini API 에러:", e)
+        return {
+            "food": food_name,
+            "is_safe": False,
+            "description": "AI 분석 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        }
 
 @app.post("/api/dogs")
 def create_dog(

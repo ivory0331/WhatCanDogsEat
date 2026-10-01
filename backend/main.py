@@ -158,25 +158,38 @@ def search_food(
         }
 
 @app.post("/api/dogs")
-def create_dog(
+def create_or_update_dog(
         dog: schemas.DogCreate,
-        current_user: models.User = Depends(get_current_user), # 👈 토큰 검사 후 유저 정보 받아옴
+        current_user: models.User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    # 강아지 정보에 '주인 ID(owner_id)'를 덧붙여서 DB에 저장합니다.
-    db_dog = models.Dog(
-        name=dog.name,
-        age=dog.age,
-        breed=dog.breed,
-        allergies=dog.allergies,
-        health_issues=dog.health_issues,
-        owner_id=current_user.id  # 👈 주인이 누군지 꼬리표 달기!
-    )
-    db.add(db_dog)
+    # 이미 이 유저에게 등록된 강아지가 있는지 확인
+    if current_user.dogs:
+        # 등록된 강아지가 있다면 새로 만들지 않고 기존 정보를 덮어씌움 (수정)
+        db_dog = current_user.dogs[0]
+        db_dog.name = dog.name
+        db_dog.age = dog.age
+        db_dog.breed = dog.breed
+        db_dog.allergies = dog.allergies
+        db_dog.health_issues = dog.health_issues
+        message = "강아지 정보가 성공적으로 수정되었습니다! ✏️"
+    else:
+        # 등록된 강아지가 없다면 새로 생성
+        db_dog = models.Dog(
+            name=dog.name,
+            age=dog.age,
+            breed=dog.breed,
+            allergies=dog.allergies,
+            health_issues=dog.health_issues,
+            owner_id=current_user.id
+        )
+        db.add(db_dog)
+        message = "내 강아지로 성공적으로 등록되었습니다! 🎉"
+
     db.commit()
     db.refresh(db_dog)
 
-    return {"message": "내 강아지로 성공적으로 등록되었습니다!", "dog": db_dog}
+    return {"message": message, "dog": db_dog}
 
 @app.get("/api/dogs/me")
 def get_my_dog(current_user: models.User = Depends(get_current_user)):

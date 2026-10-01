@@ -17,7 +17,7 @@ export default function Auth() {
         try {
             if (isLoginMode) {
                 // --- 1. 로그인 요청 ---
-                // 🚨 중요: FastAPI의 OAuth2는 JSON이 아닌 Form(URLSearchParams) 형식을 요구합니다.
+                // !중요: FastAPI의 OAuth2는 JSON이 아닌 Form(URLSearchParams) 형식을 요구합니다.
                 const formData = new URLSearchParams();
                 formData.append('username', username);
                 formData.append('password', password);
@@ -28,7 +28,12 @@ export default function Auth() {
                     body: formData,
                 });
 
-                if (!response.ok) throw new Error("로그인 실패");
+                if (!response.ok) {
+                    // 입력창 비우기
+                    setUsername('');
+                    setPassword('');
+                    throw new Error("아이디 또는 비밀번호가 틀렸습니다.");
+                }
 
                 const data = await response.json();
                 loginAction(data.access_token, username); // Zustand & LocalStorage에 토큰 저장
@@ -36,6 +41,7 @@ export default function Auth() {
                 navigate('/'); // 홈으로 이동
 
             } else {
+
                 // --- 2. 회원가입 요청 ---
                 const response = await fetch('http://localhost:8000/api/signup', {
                     method: 'POST',
@@ -46,6 +52,11 @@ export default function Auth() {
                 if (!response.ok) throw new Error("회원가입 실패 (중복된 아이디 등)");
 
                 alert("회원가입 성공! 이제 로그인해 주세요.");
+
+                // 입력창 비우기
+                setUsername('');
+                setPassword('');
+
                 setIsLoginMode(true); // 로그인 모드로 화면 전환
             }
         } catch (error: any) {

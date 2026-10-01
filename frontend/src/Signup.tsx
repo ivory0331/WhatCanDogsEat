@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDogStore, useAuthStore } from './store'; // 방금 만든 저장소 불러오기
 
@@ -7,6 +7,9 @@ export default function Signup() {
     const saveDogInfo = useDogStore((state) => state.saveDogInfo); // 저장 함수 꺼내오기
     const token = useAuthStore((state) => state.token); // Zustand에서 토큰 꺼내기
 
+    // 메모리(Zustand)에 있는 기존 강아지 정보를 가져오기
+    const existingDogInfo = useDogStore((state) => state.dogInfo);
+
     const [dogInfo, setDogInfo] = useState({
         name: '',
         age: '',
@@ -14,6 +17,19 @@ export default function Signup() {
         allergies: '',
         healthIssues: ''
     });
+
+    // 컴포넌트가 열릴 때, 기존 정보가 있다면 빈칸에 싹 채워 넣기
+    useEffect(() => {
+        if (existingDogInfo) {
+            setDogInfo({
+                name: existingDogInfo.name || '',
+                age: existingDogInfo.age || '',
+                breed: existingDogInfo.breed || '',
+                allergies: existingDogInfo.allergies || '',
+                healthIssues: existingDogInfo.health_issues || existingDogInfo.healthIssues || ''
+            });
+        }
+    }, [existingDogInfo]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

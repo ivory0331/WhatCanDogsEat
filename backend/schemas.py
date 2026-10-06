@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
 
 # 기존 강아지 등록 데이터
 class DogCreate(BaseModel):
+    id: Optional[int] = None
     name: str
     age: str
     breed: str

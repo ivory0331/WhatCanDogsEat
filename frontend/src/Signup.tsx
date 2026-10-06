@@ -1,35 +1,35 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDogStore, useAuthStore } from './store'; // 방금 만든 저장소 불러오기
 
 export default function Signup() {
     const navigate = useNavigate(); // 화면 이동 함수 (Vue Router의 router.push 역할)
-    const saveDogInfo = useDogStore((state) => state.saveDogInfo); // 저장 함수 꺼내오기
+    const location = useLocation(); // 이전 화면에서 넘겨준 데이터를 받는 역할
     const token = useAuthStore((state) => state.token); // Zustand에서 토큰 꺼내기
 
-    // 메모리(Zustand)에 있는 기존 강아지 정보를 가져오기
-    const existingDogInfo = useDogStore((state) => state.dogInfo);
+    // App.tsx에서 '수정' 버튼을 눌렀을 때 넘어온 강아지 정보
+    const dogToEdit = location.state?.dogToEdit;
 
     const [dogInfo, setDogInfo] = useState({
-        name: '',
-        age: '',
-        breed: '',
-        allergies: '',
-        healthIssues: ''
+        id: undefined as number | undefined,
+        name: '', age: '', breed: '', allergies: '', health_issues: ''
     });
 
     // 컴포넌트가 열릴 때, 기존 정보가 있다면 빈칸에 싹 채워 넣기
     useEffect(() => {
-        if (existingDogInfo) {
+        if (dogToEdit) {
             setDogInfo({
-                name: existingDogInfo.name || '',
-                age: existingDogInfo.age || '',
-                breed: existingDogInfo.breed || '',
-                allergies: existingDogInfo.allergies || '',
-                healthIssues: existingDogInfo.health_issues || existingDogInfo.healthIssues || ''
+                id: dogToEdit.id,
+                name: dogToEdit.name || '',
+                age: dogToEdit.age || '',
+                breed: dogToEdit.breed || '',
+                allergies: dogToEdit.allergies || '',
+                health_issues: dogToEdit.health_issues || dogToEdit.healthIssues || ''
             });
+        } else {
+            setDogInfo({ id: undefined, name: '', age: '', breed: '', allergies: '', health_issues: '' });
         }
-    }, [existingDogInfo]);
+    }, [dogToEdit]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -57,13 +57,11 @@ export default function Signup() {
                 body: JSON.stringify(dogInfo),
             });
 
-            if (!response.ok) throw new Error("서버 저장 실패");
+            if (!response.ok) throw new Error("저장 실패");
 
-            // 2. Zustand 전역 상태에도 정보 저장 (홈 화면에서 바로 보여주기 위함)
-            saveDogInfo(dogInfo);
+            alert(dogToEdit ? "수정 완료!" : "새 가족 등록 완료!");
 
-            alert(`${dogInfo.name}의 정보가 DB에 성공적으로 저장되었습니다!`);
-            navigate('/'); // 홈 화면으로 이동
+            window.location.href = '/'; // 홈으로 이동
 
         } catch (error) {
             console.error("에러 발생:", error);
@@ -93,7 +91,7 @@ export default function Signup() {
                 </label>
                 <label>
                     기타 건강 상태/기저질환 (선택)
-                    <textarea name="healthIssues" value={dogInfo.healthIssues} onChange={handleChange} placeholder="예: 신부전 초기, 슬개골 탈구" style={{ display: 'block', width: '100%', padding: '10px', marginTop: '5px', height: '80px' }} />
+                    <textarea name="health_issues" value={dogInfo.health_issues} onChange={handleChange} placeholder="예: 신부전 초기, 슬개골 탈구" style={{ display: 'block', width: '100%', padding: '10px', marginTop: '5px', height: '80px' }} />
                 </label>
                 <button type="submit" style={{ padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer', marginTop: '10px' }}>
                     정보 저장하기

@@ -135,16 +135,17 @@ def search_food(
 
     # 2. 제미나이에게 명령할 프롬프트 작성
     prompt = f"""
-    당신은 수의학 및 강아지 영양학 전문가입니다.
+    당신은 아주 엄격하고 보수적인 수의학 및 강아지 영양학 전문가입니다.
     사용자가 검색한 음식: '{food_name}'
     
     {dog_context}
     
-    위 음식을 강아지가 먹어도 되는지 판단하고, 반드시 아래의 JSON 형식으로만 정확하게 답변해주세요. (마크다운 기호나 다른 설명은 절대 추가하지 마세요)
+    '{food_name}'성분과 강아지의 알러지 및 건강 상태를 고려하여 안전성을 판단하고, 최종 판단의 근거를 2~3문장으로 설명하세요.
+    위 분석을 바탕으로, 최종 결과만 반드시 아래의 JSON 형식으로 정확하게 답변해주세요. (마크다운 기호 금지)
     {{
         "food": "{food_name}",
         "is_safe": true 또는 false,
-        "description": "강아지가 먹어도 되는지 여부와 그 이유, 주의할 점을 3~4문장으로 친절하게 설명해주세요. 만약 사용자의 강아지 정보(알러지, 기저질환, 건강상태)가 주어졌다면 그 이름과 상태에 맞춰서 맞춤형으로 설명해주세요."
+        "description": "왜 먹여도 되는지, 혹은 왜 먹이면 안 되는지 필수 분석 단계를 거친 논리적인 이유를 2~3문장으로 설명해주세요."
     }}
     """
 
@@ -156,13 +157,23 @@ def search_food(
         result = json.loads(clean_text)
         return result
     except Exception as e:
-        print("Gemini API 에러:", e)
-        return {
-            "food": food_name,
-            "is_safe": False,
-            "description": "AI 분석 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-        }
+        error_msg = str(e) # 에러 메시지를 문자열로 변환
+        print("Gemini API 에러 원인:", error_msg)
 
+        # 🌟 에러 메시지 안에 429나 Quota(할당량) 단어가 포함되어 있다면?
+        if "429" in error_msg or "Quota" in error_msg:
+            return {
+                "food": food_name,
+                "is_safe": False,
+                "description": "앗! 현재 AI 분석 요청이 너무 많아 무료 사용량이 일시적으로 초과되었습니다. 1~2분 뒤에 다시 시도해주세요! ⏳"
+            }
+        else:
+            # 그 외의 일반적인 서버 오류일 경우
+            return {
+                "food": food_name,
+                "is_safe": False,
+                "description": "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+            }
 # 강아지 추가 또는 수정하기
 @app.post("/api/dogs")
 def create_or_update_dog(

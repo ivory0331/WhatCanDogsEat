@@ -18,11 +18,13 @@ export default function Home() {
     const setSelectedDog = useDogStore((state) => state.setSelectedDog);
     const token = useAuthStore((state) => state.token);
 
+    // 검색
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!keyword.trim()) return;
 
         setLoading(true);
+
         try {
             // 토큰이 있으면 헤더에 담고, 없으면 안 담음
             const headers: Record<string, string> = {};
@@ -30,15 +32,22 @@ export default function Home() {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            // 백엔드 검색 API에 현재 선택된 강아지의 dog_id를 같이 보내기
-            const query = `food_name=${keyword}${selectedDog ? `&dog_id=${selectedDog.id}` : ''}`;
-
-            const response = await fetch(`http://localhost:8000/api/search?food_name=${keyword}`, {
-                headers
+            const params = new URLSearchParams({
+                food_name: keyword,
             });
+
+            if (selectedDog) {
+                params.append("dog_id", String(selectedDog.id));
+            }
+
+            const response = await fetch(
+                `http://localhost:8000/api/search?${params.toString()}`,
+                { headers }
+            );
 
             const data = await response.json();
             setResult(data);
+
         } catch (error) {
             alert("서버 오류가 발생했습니다.");
         } finally {
@@ -93,7 +102,42 @@ export default function Home() {
                 </button>
             </form>
 
-            {loading && <p style={{marginTop: '20px'}}>분석 중...</p>}
+            {/* 로딩 애니메이션 추가 */}
+            {loading && (
+                <div style={{ textAlign: 'center', margin: '40px 0' }}>
+                    {/* CSS 애니메이션을 리액트 안에서 직접 주입합니다 */}
+                    <style>
+                        {`
+              @keyframes bounceDog {
+                0%, 100% { transform: translateY(0) scale(1); }
+                50% { transform: translateY(-20px) scale(1.05); }
+              }
+              @keyframes shadowFade {
+                0%, 100% { transform: scale(1); opacity: 0.2; }
+                50% { transform: scale(0.6); opacity: 0.1; }
+              }
+            `}
+                    </style>
+
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                        {/* 뛰어오르는 강아지 이모지 */}
+                        <div style={{ fontSize: '60px', animation: 'bounceDog 0.5s infinite alternate' }}>
+                            🐕
+                        </div>
+                        {/* 강아지 그림자 (디테일!) */}
+                        <div style={{
+                            width: '40px', height: '10px', backgroundColor: 'black',
+                            borderRadius: '50%', margin: '0 auto',
+                            animation: 'shadowFade 0.5s infinite alternate'
+                        }} />
+                    </div>
+
+                    <p style={{ color: '#3b82f6', fontWeight: 'bold', marginTop: '15px', fontSize: '16px' }}>
+                        {selectedDog ? `${selectedDog.name}의 정보를 바탕으로 분석 중이에요 🐾...` : 'AI가 열심히 수의학 데이터를 분석 중이에요 🐾...'}
+                    </p>
+                </div>
+            )}
+
             {result && !loading && (
                 <div style={{
                     marginTop: '40px',

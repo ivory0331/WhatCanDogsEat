@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 // 1. 강아지 정보 타입 정의
 export interface DogInfo {
@@ -33,22 +34,22 @@ interface AuthStore {
     logout: () => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-    // 처음에 앱을 켤 때 로컬 스토리지에 저장된 토큰이 있는지 확인합니다.
-    token: localStorage.getItem('token'),
-    username: localStorage.getItem('username'),
+export const useAuthStore = create<AuthStore>()(
+    persist(
+    (set) => ({
+            // 처음에 앱을 켤 때 로컬 스토리지에 저장된 토큰이 있는지 확인합니다.
+            token: null,
+            username: null,
 
-    // 로그인 성공 시 호출될 함수
-    login: (token, username) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('username', username);
-        set({ token, username });
-    },
+            // 로그인 성공 시 호출될 함수
+            login: (token, username) => set({ token, username }),
 
-    // 로그아웃 시 호출될 함수
-    logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        set({ token: null, username: null });
-    }
-}));
+            // 로그아웃 시 호출될 함수
+            logout: () => set({ token: null, username: null }),
+        }),
+    {
+        name: 'auth-storage',
+        storage: createJSONStorage(() => sessionStorage),
+        }
+    )
+);

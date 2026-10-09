@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDogStore, useAuthStore } from './store'; // 방금 만든 저장소 불러오기
+import { useAuthStore } from './store'; // 방금 만든 저장소 불러오기
 
 export default function Signup() {
     const navigate = useNavigate(); // 화면 이동 함수 (Vue Router의 router.push 역할)

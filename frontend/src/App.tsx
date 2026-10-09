@@ -16,7 +16,6 @@ function App() {
     const logout = useAuthStore((state) => state.logout);
 
     const dogs = useDogStore((state) => state.dogs);
-    const selectedDog = useDogStore((state) => state.selectedDog);
     const setDogs = useDogStore((state) => state.setDogs);
     const setSelectedDog = useDogStore((state) => state.setSelectedDog);
 

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store';
 
 export default function Auth() {
-    const navigate = useNavigate();
     const loginAction = useAuthStore((state) => state.login);
 
     // Vue의 ref(true) 와 동일: true면 로그인 화면, false면 회원가입 화면

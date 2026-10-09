@@ -8,3 +8,5 @@ PyJWT
 google-generativeai
 passlib
 bcrypt
+python-dotenv
+python-multipart

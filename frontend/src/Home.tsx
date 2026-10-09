@@ -41,7 +41,7 @@ export default function Home() {
             }
 
             const response = await fetch(
-                `http://localhost:8000/api/search?${params.toString()}`,
+                `https://what-can-dogs-eat.onrender.com/api/search?${params.toString()}`,
                 { headers }
             );
 

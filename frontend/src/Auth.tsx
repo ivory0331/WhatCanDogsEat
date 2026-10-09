@@ -20,7 +20,7 @@ export default function Auth() {
                 formData.append('username', username);
                 formData.append('password', password);
 
-                const response = await fetch('http://localhost:8000/api/login', {
+                const response = await fetch('https://what-can-dogs-eat.onrender.com/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData,
@@ -41,7 +41,7 @@ export default function Auth() {
             } else {
 
                 // --- 2. 회원가입 요청 ---
-                const response = await fetch('http://localhost:8000/api/signup', {
+                const response = await fetch('https://what-can-dogs-eat.onrender.com/api/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),

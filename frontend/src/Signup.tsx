@@ -48,7 +48,7 @@ export default function Signup() {
 
         try {
             // 1. 파이썬 백엔드로 데이터 전송 (POST 요청)
-            const response = await fetch('http://localhost:8000/api/dogs', {
+            const response = await fetch('https://what-can-dogs-eat.onrender.com/api/dogs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

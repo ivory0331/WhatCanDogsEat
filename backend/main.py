@@ -110,6 +110,7 @@ def search_food(
 ):
     # 1. 로그인한 유저인지 확인하고, 맞춤 강아지 정보(알러지, 질환 등)를 문장으로 만들기.
     dog_context = ""
+    analysis_instruction = f"'{food_name}'의 성분이 일반적인 건강한 강아지에게 안전한지 판단하고,"
 
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
@@ -118,18 +119,20 @@ def search_food(
             username = payload.get("sub")
             user = db.query(models.User).filter(models.User.username == username).first()
 
-            # 선택한 강아지 ID로 정확한 강아지 정보를 찾기
-            selected_dog = db.query(models.Dog).filter(models.Dog.id == dog_id, models.Dog.owner_id == user.id).first()
+            if user and dog_id:
+                # 선택한 강아지 ID로 정확한 강아지 정보를 찾기
+                selected_dog = db.query(models.Dog).filter(models.Dog.id == dog_id, models.Dog.owner_id == user.id).first()
 
-            if selected_dog:
-                dog_context = f"""
-                [주의사항] 질문하는 사용자의 강아지 정보는 다음과 같습니다. 이 정보를 반드시 바탕으로 대답해주세요:
-                - 이름: {selected_dog.name}
-                - 나이: {selected_dog.age}살
-                - 견종: {selected_dog.breed}
-                - 알러지: {selected_dog.allergies or '없음'}
-                - 기저질환 또는 건강상태: {selected_dog.health_issues or '없음'}
-                """
+                if selected_dog:
+                    dog_context = f"""
+                    [주의사항] 질문하는 사용자의 강아지 정보는 다음과 같습니다. 이 정보를 반드시 바탕으로 대답해주세요:
+                    - 이름: {selected_dog.name}
+                    - 나이: {selected_dog.age}살
+                    - 견종: {selected_dog.breed}
+                    - 알러지: {selected_dog.allergies or '없음'}
+                    - 기저질환 또는 건강상태: {selected_dog.health_issues or '없음'}
+                    """
+                    analysis_instruction = f"'{food_name}'성분과 제공된 강아지의 알러지 및 건강 상태를 꼼꼼히 교차 검증하여 안전성을 판단하고,"
         except:
             pass # 로그인이 안 되어있으면 그냥 일반 강아지 기준으로 검색 진행
 
@@ -140,7 +143,7 @@ def search_food(
     
     {dog_context}
     
-    '{food_name}'성분과 강아지의 알러지 및 건강 상태를 고려하여 안전성을 판단하고, 최종 판단의 근거를 2~3문장으로 설명하세요.
+    {analysis_instruction} 최종 판단의 근거를 2~3문장으로 설명하세요.
     위 분석을 바탕으로, 최종 결과만 반드시 아래의 JSON 형식으로 정확하게 답변해주세요. (마크다운 기호 금지)
     {{
         "food": "{food_name}",
@@ -174,6 +177,7 @@ def search_food(
                 "is_safe": False,
                 "description": "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
             }
+
 # 강아지 추가 또는 수정하기
 @app.post("/api/dogs")
 def create_or_update_dog(

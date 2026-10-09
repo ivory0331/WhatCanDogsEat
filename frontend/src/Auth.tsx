@@ -38,7 +38,7 @@ export default function Auth() {
                 const data = await response.json();
                 loginAction(data.access_token, username); // Zustand & LocalStorage에 토큰 저장
                 alert(`${username}님 환영합니다!`);
-                navigate('/'); // 홈으로 이동
+                window.location.href = '/'; // 홈으로 이동
 
             } else {
 

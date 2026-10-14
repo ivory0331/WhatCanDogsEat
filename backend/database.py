@@ -2,6 +2,10 @@ import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+
+# .env파일 읽기
+load_dotenv()
 
 # SQLALCHEMY_DATABASE_URL = "sqlite:///./dog_data.db"
 

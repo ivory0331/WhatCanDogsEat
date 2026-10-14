@@ -86,7 +86,17 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.post("/api/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # 1. 유저 확인
+    #user = db.query(models.User).filter(models.User.username == form_data.username).first()
+
+    # --- 디버깅용 ---
+    print("=== 로그인 디버깅 시작 ===")
+    print(f"1. 프론트에서 받은 비번: {form_data.password}")
+    print(f"2. 받은 비번의 길이: {len(form_data.password)}")
+
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if user:
+        print(f"3. DB 비번 길이: {len(user.password)}")
+    # ----------------------------
 
     # 2. 비밀번호 검증
     if not user or not pwd_context.verify(form_data.password, user.password):

@@ -13,6 +13,7 @@ Deployment: Vercel, Render, Supabase
 배포 URL: https://whatcandogseat-frontend.vercel.app
 
 [시스템 아키텍처]
+
              사용자 (Client)
                     │
                     ▼

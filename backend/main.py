@@ -33,9 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# .env파일 읽기
+load_dotenv()
+
 # --- 보안 및 인증 설정 ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "my-super-secret-key-for-toy-project" # 토큰 암호화 키
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 

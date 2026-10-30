@@ -1,5 +1,21 @@
 import { useState } from 'react';
 import { useDogStore, useAuthStore } from './store'; // 저장소 불러오기
+import { RecentSearches } from './RecentSearches';
+import { SafetyTrafficLight } from './SafetyTrafficLight';
+
+const RECENT_SEARCHES_KEY = 'recentFoodSearches';
+const MAX_RECENT_SEARCHES = 5;
+
+function getRecentSearches(): string[] {
+    try {
+        const savedSearches: unknown = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) ?? '[]');
+        return Array.isArray(savedSearches)
+            ? savedSearches.filter((food): food is string => typeof food === 'string').slice(0, MAX_RECENT_SEARCHES)
+            : [];
+    } catch {
+        return [];
+    }
+}
 
 interface SearchResult {
     food: string;
@@ -11,6 +27,7 @@ export default function Home() {
     const [keyword, setKeyword] = useState('');
     const [result, setResult] = useState<SearchResult | null>(null);
     const [loading, setLoading] = useState(false);
+    const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
 
     // 🌟 여러 마리 배열(dogs)과 현재 선택된 강아지(selectedDog) 가져오기
     const dogs = useDogStore((state) => state.dogs);
@@ -47,6 +64,16 @@ export default function Home() {
 
             const data = await response.json();
             setResult(data);
+
+            const searchedFood = keyword.trim();
+            const updatedSearches = [searchedFood, ...recentSearches.filter((food) => food !== searchedFood)]
+                .slice(0, MAX_RECENT_SEARCHES);
+            setRecentSearches(updatedSearches);
+            try {
+                localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updatedSearches));
+            } catch {
+                // 검색 결과는 저장 공간을 사용할 수 없어도 표시합니다.
+            }
 
         } catch (error) {
             alert("서버 오류가 발생했습니다.");
@@ -102,6 +129,8 @@ export default function Home() {
                 </button>
             </form>
 
+            <RecentSearches foods={recentSearches} onSelect={setKeyword} />
+
             {/* 로딩 애니메이션 추가 */}
             {loading && (
                 <div style={{ textAlign: 'center', margin: '40px 0' }}>
@@ -141,16 +170,44 @@ export default function Home() {
             {result && !loading && (
                 <div style={{
                     marginTop: '40px',
-                    padding: '30px',
+                    padding: '24px 30px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '12px',
-                    backgroundColor: '#f9fafb'
+                    backgroundColor: '#f9fafb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '28px',
+                    flexWrap: 'wrap',
                 }}>
-                    <h2 style={{fontSize: '24px', marginBottom: '15px'}}>{result.food}</h2>
-                    <h3 style={{fontSize: '20px', color: result.is_safe ? '#16a34a' : '#dc2626'}}>
-                        {result.is_safe ? '✅ 먹어도 괜찮아요!' : '❌ 절대 안 돼요!'}
-                    </h3>
-                    <p style={{marginTop: '10px'}}>{result.description}</p>
+                    <SafetyTrafficLight isSafe={result.is_safe} />
+                    <div style={{
+                        position: 'relative',
+                        flex: '1 1 260px',
+                        textAlign: 'left',
+                        padding: '20px 22px',
+                        borderRadius: '20px',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: 'white',
+                        boxShadow: '0 4px 14px rgba(15,23,42,0.06)',
+                    }}>
+                        <span aria-hidden="true" style={{
+                            position: 'absolute',
+                            left: '-8px',
+                            top: '50%',
+                            width: '14px',
+                            height: '14px',
+                            backgroundColor: 'white',
+                            borderLeft: '1px solid #e5e7eb',
+                            borderBottom: '1px solid #e5e7eb',
+                            transform: 'translateY(-50%) rotate(45deg)',
+                        }} />
+                        <h2 style={{ fontSize: '24px', marginBottom: '12px' }}>{result.food}</h2>
+                        <h3 style={{ fontSize: '20px', color: result.is_safe ? '#16a34a' : '#dc2626', margin: '0 0 10px' }}>
+                            {result.is_safe ? '✅ 먹어도 괜찮아요!' : '❌ 먹이면 안 돼요!'}
+                        </h3>
+                        <p>{result.description}</p>
+                    </div>
                 </div>
             )}
         </div>

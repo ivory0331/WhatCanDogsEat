@@ -1,5 +1,6 @@
 # IntelliJ 설정 파일
 .idea/
+*.md
 
 # Python 백엔드 무시 파일
 backend/venv/

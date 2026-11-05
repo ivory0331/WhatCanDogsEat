@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store'; // 방금 만든 저장소 불러오기
+import { API_BASE_URL } from './apiConfig';
 
 export default function Signup() {
     const navigate = useNavigate(); // 화면 이동 함수 (Vue Router의 router.push 역할)
@@ -48,7 +49,7 @@ export default function Signup() {
 
         try {
             // 1. 파이썬 백엔드로 데이터 전송 (POST 요청)
-            const response = await fetch('https://what-can-dogs-eat.onrender.com/api/dogs', {
+            const response = await fetch(`${API_BASE_URL}/api/dogs`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

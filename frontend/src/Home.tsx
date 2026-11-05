@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDogStore, useAuthStore } from './store'; // 저장소 불러오기
 import { RecentSearches } from './RecentSearches';
 import { SafetyTrafficLight } from './SafetyTrafficLight';
+import { API_BASE_URL } from './apiConfig';
 
 const RECENT_SEARCHES_KEY = 'recentFoodSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -58,7 +59,7 @@ export default function Home() {
             }
 
             const response = await fetch(
-                `https://what-can-dogs-eat.onrender.com/api/search?${params.toString()}`,
+                `${API_BASE_URL}/api/search?${params.toString()}`,
                 { headers }
             );
 

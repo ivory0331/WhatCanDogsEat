@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from fastapi import Header
 from typing import Optional
+import calendar
+from datetime import date
 
 # 환경변수(.env) 로드 및 제미나이 설정
 load_dotenv()
@@ -144,8 +146,9 @@ def search_food(
                     - 견종: {selected_dog.breed}
                     - 알러지: {selected_dog.allergies or '없음'}
                     - 기저질환 또는 건강상태: {selected_dog.health_issues or '없음'}
+                    - 복용 중인 약/영양제: {format_active_medications(selected_dog)}
                     """
-                    analysis_instruction = f"'{food_name}'성분과 제공된 강아지의 알러지 및 건강 상태를 꼼꼼히 교차 검증하여 안전성을 판단하고,"
+                    analysis_instruction = f"'{food_name}'성분과 제공된 강아지의 알러지, 건강 상태, 복용 중인 약/영양제와의 상호작용을 꼼꼼히 교차 검증하여 안전성을 판단하고,"
         except:
             pass # 로그인이 안 되어있으면 그냥 일반 강아지 기준으로 검색 진행
 
@@ -233,6 +236,175 @@ def create_or_update_dog(
 @app.get("/api/dogs/me")
 def get_my_dog(current_user: models.User = Depends(get_current_user)):
     return current_user.dogs
+
+# --- 약/영양제 체크리스트 ---
+
+def format_active_medications(dog: models.Dog) -> str:
+    active = [med for med in dog.medications if med.is_active]
+    if not active:
+        return "없음"
+    return ", ".join(f"{med.name}({med.dosage})" if med.dosage else med.name for med in active)
+
+
+def get_owned_dog(dog_id: int, user: models.User, db: Session) -> models.Dog:
+    dog = db.query(models.Dog).filter(models.Dog.id == dog_id, models.Dog.owner_id == user.id).first()
+    if dog is None:
+        raise HTTPException(status_code=404, detail="강아지 정보를 찾을 수 없습니다.")
+    return dog
+
+
+def get_owned_medication(medication_id: int, user: models.User, db: Session) -> models.Medication:
+    medication = (
+        db.query(models.Medication)
+        .join(models.Dog, models.Medication.dog_id == models.Dog.id)
+        .filter(models.Medication.id == medication_id, models.Dog.owner_id == user.id)
+        .first()
+    )
+    if medication is None:
+        raise HTTPException(status_code=404, detail="약/영양제 정보를 찾을 수 없습니다.")
+    return medication
+
+
+def apply_medication_fields(medication: models.Medication, payload: schemas.MedicationCreate) -> None:
+    medication.name = payload.name
+    medication.kind = payload.kind
+    medication.dosage = payload.dosage or None
+    medication.frequency = payload.frequency
+    medication.days_of_week = (
+        ",".join(str(day) for day in payload.days_of_week)
+        if payload.frequency == "weekly" and payload.days_of_week
+        else None
+    )
+    medication.day_of_month = payload.day_of_month if payload.frequency == "monthly" else None
+    medication.memo = payload.memo or None
+    medication.is_active = payload.is_active
+
+
+def is_due(medication: models.Medication, target_date: date) -> bool:
+    """해당 날짜에 먹어야 하는 약/영양제인지 판단"""
+    if not medication.is_active:
+        return False
+    if medication.frequency == "weekly":
+        days = {int(day) for day in (medication.days_of_week or "").split(",") if day.strip()}
+        return target_date.weekday() in days
+    if medication.frequency == "monthly":
+        if medication.day_of_month is None:
+            return False
+        # 31일처럼 그 달에 없는 날짜는 그 달의 마지막 날로 처리
+        last_day = calendar.monthrange(target_date.year, target_date.month)[1]
+        return target_date.day == min(medication.day_of_month, last_day)
+    return True  # daily
+
+
+@app.get("/api/dogs/{dog_id}/medications", response_model=list[schemas.MedicationResponse])
+def list_medications(
+        dog_id: int,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    dog = get_owned_dog(dog_id, current_user, db)
+    return sorted(dog.medications, key=lambda med: med.id)
+
+
+@app.post("/api/dogs/{dog_id}/medications", response_model=schemas.MedicationResponse, status_code=201)
+def create_medication(
+        dog_id: int,
+        payload: schemas.MedicationCreate,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    dog = get_owned_dog(dog_id, current_user, db)
+    medication = models.Medication(dog_id=dog.id)
+    apply_medication_fields(medication, payload)
+    db.add(medication)
+    db.commit()
+    db.refresh(medication)
+    return medication
+
+
+@app.put("/api/medications/{medication_id}", response_model=schemas.MedicationResponse)
+def update_medication(
+        medication_id: int,
+        payload: schemas.MedicationUpdate,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    medication = get_owned_medication(medication_id, current_user, db)
+    apply_medication_fields(medication, payload)
+    db.commit()
+    db.refresh(medication)
+    return medication
+
+
+@app.delete("/api/medications/{medication_id}", status_code=204)
+def delete_medication(
+        medication_id: int,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+) -> None:
+    medication = get_owned_medication(medication_id, current_user, db)
+    db.delete(medication)
+    db.commit()
+
+
+@app.get("/api/dogs/{dog_id}/checklist", response_model=list[schemas.ChecklistItemResponse])
+def get_checklist(
+        dog_id: int,
+        target_date: date = Query(alias="date"),
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    dog = get_owned_dog(dog_id, current_user, db)
+    due = sorted((med for med in dog.medications if is_due(med, target_date)), key=lambda med: med.id)
+    if not due:
+        return []
+
+    taken_ids = {
+        log.medication_id
+        for log in db.query(models.MedicationLog).filter(
+            models.MedicationLog.medication_id.in_([med.id for med in due]),
+            models.MedicationLog.date == target_date,
+        )
+    }
+    return [{"medication": med, "taken": med.id in taken_ids} for med in due]
+
+
+@app.put("/api/medications/{medication_id}/logs/{log_date}", response_model=schemas.MedicationLogResponse)
+def mark_taken(
+        medication_id: int,
+        log_date: date,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    medication = get_owned_medication(medication_id, current_user, db)
+    # 클라이언트 시간대 차이를 고려해 하루 여유를 둠
+    if (log_date - date.today()).days > 1:
+        raise HTTPException(status_code=400, detail="미래 날짜는 체크할 수 없습니다.")
+
+    existing = db.query(models.MedicationLog).filter(
+        models.MedicationLog.medication_id == medication.id,
+        models.MedicationLog.date == log_date,
+    ).first()
+    if existing is None:
+        db.add(models.MedicationLog(medication_id=medication.id, date=log_date))
+        db.commit()
+    return {"medication_id": medication.id, "date": log_date, "taken": True}
+
+
+@app.delete("/api/medications/{medication_id}/logs/{log_date}", response_model=schemas.MedicationLogResponse)
+def unmark_taken(
+        medication_id: int,
+        log_date: date,
+        current_user: models.User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    medication = get_owned_medication(medication_id, current_user, db)
+    db.query(models.MedicationLog).filter(
+        models.MedicationLog.medication_id == medication.id,
+        models.MedicationLog.date == log_date,
+    ).delete()
+    db.commit()
+    return {"medication_id": medication.id, "date": log_date, "taken": False}
 
 if __name__ == "__main__":
     import uvicorn

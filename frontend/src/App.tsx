@@ -3,7 +3,9 @@ import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import Home from './Home';
 import Signup from './Signup'; // 강아지 등록 컴포넌트
 import Auth from './Auth';     // 방금 만든 로그인/유저가입 컴포넌트
+import { MedicationChecklist } from './MedicationChecklist';
 import { useAuthStore, useDogStore } from './store';
+import { API_BASE_URL } from './apiConfig';
 
 function App() {
     const navigate = useNavigate();
@@ -22,7 +24,7 @@ function App() {
     // 토큰(로그인)은 있는데 강아지 정보가 비어있다면 서버에서 가져옴
     useEffect(() => {
         if (token && dogs.length === 0) {
-            fetch('https://what-can-dogs-eat.onrender.com/api/dogs/me', {
+            fetch(`${API_BASE_URL}/api/dogs/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -58,6 +60,8 @@ function App() {
                 {/* 로그인 했을 때와 안 했을 때 보여주는 메뉴가 다름 (Vue의 v-if, v-else) */}
                 {token ? (
                     <>
+                        <Link to="/medications" style={{ textDecoration: 'none', color: '#3b82f6', fontWeight: 'bold' }}>💊 복용 체크</Link>
+
                         <div style={{position: 'relative'}}>
                           <span
                               onClick={() => setShowProfile(!showProfile)}
@@ -156,6 +160,7 @@ function App() {
                 <Route path="/" element={<Home/>}/>
                 <Route path="/auth" element={<Auth/>}/>
                 <Route path="/signup" element={<Signup/>}/>
+                <Route path="/medications" element={<MedicationChecklist/>}/>
             </Routes>
         </div>
     );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from './store';
+import { API_BASE_URL } from './apiConfig';
 
 export default function Auth() {
     const loginAction = useAuthStore((state) => state.login);
@@ -20,7 +21,7 @@ export default function Auth() {
                 formData.append('username', username);
                 formData.append('password', password);
 
-                const response = await fetch('https://what-can-dogs-eat.onrender.com/api/login', {
+                const response = await fetch(`${API_BASE_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData,
@@ -41,7 +42,7 @@ export default function Auth() {
             } else {
 
                 // --- 2. 회원가입 요청 ---
-                const response = await fetch('https://what-can-dogs-eat.onrender.com/api/signup', {
+                const response = await fetch(`${API_BASE_URL}/api/signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),

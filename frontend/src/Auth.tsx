@@ -9,10 +9,14 @@ export default function Auth() {
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    // 요청 처리 중 여부 (서버가 느릴 때 중복 클릭 방지 + 로딩 표시)
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return; // 이미 처리 중이면 무시
 
+        setIsSubmitting(true);
         try {
             if (isLoginMode) {
                 // --- 1. 로그인 요청 ---
@@ -60,6 +64,8 @@ export default function Auth() {
             }
         } catch (error: any) {
             alert(error.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -84,16 +90,54 @@ export default function Auth() {
                     required
                     style={{ padding: '10px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
                 />
-                <button type="submit" style={{ padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}>
-                    {isLoginMode ? '로그인하기' : '가입하기'}
+                <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    aria-busy={isSubmitting}
+                    style={{
+                        padding: '12px',
+                        backgroundColor: isSubmitting ? '#93c5fd' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                    }}
+                >
+                    {isSubmitting && (
+                        <span
+                            aria-hidden="true"
+                            style={{
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid rgba(255, 255, 255, 0.4)',
+                                borderTopColor: 'white',
+                                borderRadius: '50%',
+                                animation: 'authSpin 0.8s linear infinite',
+                            }}
+                        />
+                    )}
+                    {isSubmitting ? '처리 중...' : isLoginMode ? '로그인하기' : '가입하기'}
                 </button>
+                {isSubmitting && (
+                    <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                        서버를 깨우는 중이면 최대 1분 정도 걸릴 수 있어요 🐾
+                    </p>
+                )}
+                <style>{`@keyframes authSpin { to { transform: rotate(360deg); } }`}</style>
             </form>
 
             <p style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
                 {isLoginMode ? "계정이 없으신가요? " : "이미 계정이 있으신가요? "}
                 <span
-                    style={{ color: '#3b82f6', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={() => setIsLoginMode(!isLoginMode)}
+                    style={{ color: '#3b82f6', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: isSubmitting ? 0.5 : 1 }}
+                    onClick={() => {
+                        if (!isSubmitting) setIsLoginMode(!isLoginMode); // 처리 중엔 모드 전환 막기
+                    }}
                 >
           {isLoginMode ? '회원가입' : '로그인'}
         </span>

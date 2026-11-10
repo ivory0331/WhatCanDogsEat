@@ -6,6 +6,7 @@ import Auth from './Auth';     // 방금 만든 로그인/유저가입 컴포넌
 import { MedicationChecklist } from './MedicationChecklist';
 import { useAuthStore, useDogStore } from './store';
 import { API_BASE_URL } from './apiConfig';
+import { wakeUpBackend } from './wakeUpBackend'
 
 function App() {
     const navigate = useNavigate();
@@ -23,6 +24,7 @@ function App() {
 
     // 토큰(로그인)은 있는데 강아지 정보가 비어있다면 서버에서 가져옴
     useEffect(() => {
+        wakeUpBackend();
         if (token && dogs.length === 0) {
             fetch(`${API_BASE_URL}/api/dogs/me`, {
                 headers: {

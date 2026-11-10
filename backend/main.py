@@ -27,6 +27,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -72,6 +73,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+
+# -- 백엔드 헬스체크 --
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 # --- 인증 API ---
 @app.post("/api/signup")

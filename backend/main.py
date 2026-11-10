@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, status
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ import schemas
 from database import engine, SessionLocal
 
 import os
+import asyncio
 import json
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -18,14 +20,32 @@ from typing import Optional
 import calendar
 from datetime import date
 
-# 환경변수(.env) 로드 및 제미나이 설정
+# 환경변수(.env) 로드
 load_dotenv()
+# 제미나이 sdk 초기화, 글로벌 모델 선언
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-3.8-flash')
-
+# DB테이블 생성
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+# 비동기 웜업 함수 (서버 시작을 방해하지 않고 뒤에서 조용히 실행)
+async def warm_up_gemini():
+    try:
+        # 동기 호출인 generate_content를 별도 쓰레드에서 비동기로 실행
+        await asyncio.to_thread(model.generate_content, "ping")
+        print("Gemini AI Model Warmed up successfully!")
+    except Exception as e:
+        print(f"Gemini Warm-up skipped or failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 백엔드 서버가 켜질 때 웜업 작업을 '백그라운드'로 던져두고 바로 통과!
+    asyncio.create_task(warm_up_gemini())
+    yield
+
+# FastAPI 앱 생성
+app = FastAPI(lifespan=lifespan)
 
 # CORS 설정
 app.add_middleware(

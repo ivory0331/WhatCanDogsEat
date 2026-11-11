@@ -14,26 +14,28 @@ import os
 import asyncio
 import json
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 from fastapi import Header
 from typing import Optional
 import calendar
 from datetime import date
 
-# 환경변수(.env) 로드
+# 1. 환경변수(.env) 로드
 load_dotenv()
-# 제미나이 sdk 초기화, 글로벌 모델 선언
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-3.8-flash')
-# DB테이블 생성
+# 2. 제미나이 sdk 초기화, 글로벌 모델 선언
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+model_id = "gemini-3.5-flash-lite"
+# 3. DB테이블 생성
 models.Base.metadata.create_all(bind=engine)
 
 # 비동기 웜업 함수 (서버 시작을 방해하지 않고 뒤에서 조용히 실행)
 async def warm_up_gemini():
     try:
         # 동기 호출인 generate_content를 별도 쓰레드에서 비동기로 실행
-        await asyncio.to_thread(model.generate_content, "ping")
-        print("Gemini AI Model Warmed up successfully!")
+        await client.aio.models.generate_content(
+            model=model_id, contents="ping"
+        )
+        print(f"Gemini AI Model({model_id}) Warmed up successfully!")
     except Exception as e:
         print(f"Gemini Warm-up skipped or failed: {e}")
 
@@ -143,7 +145,7 @@ def read_root():
 
 # AI 검색 API
 @app.get("/api/search")
-def search_food(
+async def search_food(
         food_name: str,
         dog_id: Optional[int] = None,
         authorization: Optional[str] = Header(None), # 프론트에서 보낸 토큰(선택사항)
@@ -196,7 +198,9 @@ def search_food(
 
     # 3. 제미나이 호출 및 프론트엔드로 결과 전달
     try:
-        response = model.generate_content(prompt)
+        response = await client.aio.models.generate_content(
+            model=model_id, contents=prompt
+        )
         # 제미나이가 준 텍스트에서 불필요한 마크다운(```json 등)을 제거하고 딕셔너리로 변환
         clean_text = response.text.strip().replace('```json', '').replace('```', '')
         result = json.loads(clean_text)

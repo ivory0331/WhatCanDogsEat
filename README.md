@@ -91,6 +91,7 @@
 | **Vercel** | 프론트엔드 배포 |
 | **Render** | FastAPI 백엔드 배포 |
 | **Supabase** | PostgreSQL 데이터베이스 제공 |
+| **UptimeRobot** | 서버 가동률 모니터링, ping 헬스체크 |
 
 ## 🏗️ 시스템 아키텍처
 
